@@ -1,0 +1,43 @@
+@using SprintEvaluationProjectCropDeal.Models
+@model List<Payment>
+
+<div class="container mt-4">
+    <div class="row pb-2">
+        <h2 class="text-primary">Payment Records</h2>
+    </div>
+
+    <a asp-controller="Payment" asp-action="Create" class="btn btn-success mb-3">
+        Add New Payment
+    </a>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Farmer ID</th>
+                <th>Dealer ID</th>
+                <th>Crop ID</th>
+                <th>Amount</th>
+                <th>Transaction Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var payment in Model)
+            {
+                <tr>
+                    <td>@payment.FarmerId</td>
+                    <td>@payment.DealerId</td>
+                    <td>@payment.CropId</td>
+                    <td>@payment.Amount</td>
+                    <td>@payment.TransactionDate.ToString("dd-MM-yyyy")</td>
+                    <td>@payment.TransactionStatus</td>
+                    <td>
+                        <a asp-controller="Payment" asp-action="Edit" asp-route-id="@payment.PaymentId" class="btn btn-warning btn-sm">Edit</a>
+                        <a asp-controller="Payment" asp-action="Delete" asp-route-id="@payment.PaymentId" class="btn btn-danger btn-sm">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

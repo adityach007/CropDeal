@@ -1,0 +1,14 @@
+# .NET / VS / VS Code
+.vs/
+.vscode/
+bin/
+obj/
+launchSettings.json
+
+# User secrets and local settings
+appsettings.Development.json
+secrets.json
+
+# Logs
+logs/
+*.log

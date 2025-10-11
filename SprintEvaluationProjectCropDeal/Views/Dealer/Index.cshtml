@@ -1,0 +1,45 @@
+@using SprintEvaluationProjectCropDeal.Models
+@model List<Dealer>
+
+<div class="container mt-4">
+    <div class="row pb-2">
+        <h2 class="text-primary">Dealer Listings</h2>
+    </div>
+
+    <a asp-controller="Dealer" asp-action="Create" class="btn btn-success mb-3">
+        Add New Dealer
+    </a>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Aadhar</th>
+                <th>Bank Account</th>
+                <th>IFSC Code</th>
+                <th>Active</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var dealer in Model)
+            {
+                <tr>
+                    <td>@dealer.DealerName</td>
+                    <td>@dealer.DealerPhoneNumber</td>
+                    <td>@dealer.DealerEmailAddress</td>
+                    <td>@dealer.DealerAadharNumber</td>
+                    <td>@dealer.DealerBankAccount</td>
+                    <td>@dealer.DealerIFSCode</td>
+                    <td>@dealer.IsDealerIdActive</td>
+                    <td>
+                        <a asp-controller="Dealer" asp-action="Edit" asp-route-id="@dealer.DealerId" class="btn btn-warning btn-sm">Edit</a>
+                        <a asp-controller="Dealer" asp-action="Delete" asp-route-id="@dealer.DealerId" class="btn btn-danger btn-sm">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

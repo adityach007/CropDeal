@@ -1,0 +1,59 @@
+@using SprintEvaluationProjectCropDeal.Models
+@model Dealer
+
+<form method="post">
+    <div class="border p-3 mt-4">
+        <div class="row pb-2">
+            <h2 class="text-danger">Delete Dealer</h2>
+            <hr />
+        </div>
+
+        <input asp-for="DealerId" type="hidden" />
+
+        <div class="mb-3 row p-1">
+            <label asp-for="DealerName" class="p-0"></label>
+            <input asp-for="DealerName" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3 row p-1">
+            <label asp-for="DealerPhoneNumber" class="p-0"></label>
+            <input asp-for="DealerPhoneNumber" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3 row p-1">
+            <label asp-for="DealerEmailAddress" class="p-0"></label>
+            <input asp-for="DealerEmailAddress" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3 row p-1">
+            <label asp-for="DealerAadharNumber" class="p-0"></label>
+            <input asp-for="DealerAadharNumber" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3 row p-1">
+            <label asp-for="DealerBankAccount" class="p-0"></label>
+            <input asp-for="DealerBankAccount" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3 row p-1">
+            <label asp-for="DealerIFSCode" class="p-0"></label>
+            <input asp-for="DealerIFSCode" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3 row p-1">
+            <label asp-for="IsDealerIdActive" class="p-0"></label>
+            <input asp-for="IsDealerIdActive" class="form-check-input" type="checkbox" disabled />
+        </div>
+
+        <div class="row">
+            <div class="col-6 col-md-3">
+                <button type="submit" class="btn btn-danger form-control">Delete</button>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-controller="Dealer" asp-action="Index" class="btn btn-outline-secondary border form-control">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
