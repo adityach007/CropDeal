@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Controllers;
 using SprintEvaluationProjectCropDeal.Models;
@@ -12,14 +12,16 @@ using IAuthService = SprintEvaluationProjectCropDeal.Services.Interfaces.IAuthor
 
 namespace SprintEvaluationProjectCropDeal.Tests.Controllers
 {
+    [TestFixture]
     public class FarmerControllerTests
     {
-        private readonly Mock<IFarmerService> _mockFarmerService;
-        private readonly Mock<ILogger<FarmerController>> _mockLogger;
-        private readonly Mock<IAuthService> _mockAuthService;
-        private readonly FarmerController _controller;
+        private Mock<IFarmerService> _mockFarmerService;
+        private Mock<ILogger<FarmerController>> _mockLogger;
+        private Mock<IAuthService> _mockAuthService;
+        private FarmerController _controller;
 
-        public FarmerControllerTests()
+        [SetUp]
+        public void Setup()
         {
             _mockFarmerService = new Mock<IFarmerService>();
             _mockLogger = new Mock<ILogger<FarmerController>>();
@@ -27,7 +29,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Controllers
             _controller = new FarmerController(_mockFarmerService.Object, _mockLogger.Object, _mockAuthService.Object);
         }
 
-        [Fact]
+        [Test]
         public async Task GetAll_ShouldReturnOkWithFarmers()
         {
             // Arrange
@@ -47,7 +49,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Controllers
             returnedFarmers.Should().HaveCount(2);
         }
 
-        [Fact]
+        [Test]
         public async Task GetById_WithValidIdAndAuthorization_ShouldReturnOkWithFarmer()
         {
             // Arrange

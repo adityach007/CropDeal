@@ -1,5 +1,5 @@
 using Moq;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Models;
 using SprintEvaluationProjectCropDeal.Services.Implementations;
@@ -7,18 +7,20 @@ using SprintEvaluationProjectCropDeal.Repositories.Interfaces;
 
 namespace SprintEvaluationProjectCropDeal.Tests.Services
 {
+    [TestFixture]
     public class FarmerServiceTests
     {
-        private readonly Mock<IFarmerRepository> _mockRepository;
-        private readonly FarmerService _farmerService;
+        private Mock<IFarmerRepository> _mockRepository;
+        private FarmerService _farmerService;
 
-        public FarmerServiceTests()
+        [SetUp]
+        public void Setup()
         {
             _mockRepository = new Mock<IFarmerRepository>();
             _farmerService = new FarmerService(_mockRepository.Object);
         }
 
-        [Fact]
+        [Test]
         public async Task GetAllFarmersAsync_ShouldReturnAllFarmers()
         {
             // Arrange
@@ -38,7 +40,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Services
             _mockRepository.Verify(r => r.GetAllAsync(), Times.Once);
         }
 
-        [Fact]
+        [Test]
         public async Task CreateFarmerAsync_WithValidFarmer_ShouldReturnTrue()
         {
             // Arrange

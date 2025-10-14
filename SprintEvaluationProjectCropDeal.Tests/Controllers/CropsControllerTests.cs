@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Controllers;
 using SprintEvaluationProjectCropDeal.Models;
@@ -12,14 +12,16 @@ using IAuthService = SprintEvaluationProjectCropDeal.Services.Interfaces.IAuthor
 
 namespace SprintEvaluationProjectCropDeal.Tests.Controllers
 {
+    [TestFixture]
     public class CropsControllerTests
     {
-        private readonly Mock<ICropsService> _mockCropsService;
-        private readonly Mock<ILogger<CropsController>> _mockLogger;
-        private readonly Mock<IAuthService> _mockAuthService;
-        private readonly CropsController _controller;
+        private Mock<ICropsService> _mockCropsService;
+        private Mock<ILogger<CropsController>> _mockLogger;
+        private Mock<IAuthService> _mockAuthService;
+        private CropsController _controller;
 
-        public CropsControllerTests()
+        [SetUp]
+        public void Setup()
         {
             _mockCropsService = new Mock<ICropsService>();
             _mockLogger = new Mock<ILogger<CropsController>>();
@@ -27,7 +29,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Controllers
             _controller = new CropsController(_mockCropsService.Object, _mockLogger.Object, _mockAuthService.Object);
         }
 
-        [Fact]
+        [Test]
         public async Task GetById_WithValidId_ShouldReturnOkWithCrop()
         {
             // Arrange
@@ -43,7 +45,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Controllers
             returnedCrop.CropId.Should().Be(1);
         }
 
-        [Fact]
+        [Test]
         public async Task Create_WithValidCrop_ShouldReturnCreatedResult()
         {
             // Arrange

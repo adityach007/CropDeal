@@ -1,5 +1,5 @@
 using Moq;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Models;
 using SprintEvaluationProjectCropDeal.Services.Implementations;
@@ -7,18 +7,20 @@ using SprintEvaluationProjectCropDeal.Repositories.Interfaces;
 
 namespace SprintEvaluationProjectCropDeal.Tests.Services
 {
+    [TestFixture]
     public class DealerServiceTests
     {
-        private readonly Mock<IDealerRepository> _mockRepository;
-        private readonly DealerService _dealerService;
+        private Mock<IDealerRepository> _mockRepository;
+        private DealerService _dealerService;
 
-        public DealerServiceTests()
+        [SetUp]
+        public void Setup()
         {
             _mockRepository = new Mock<IDealerRepository>();
             _dealerService = new DealerService(_mockRepository.Object);
         }
 
-        [Fact]
+        [Test]
         public async Task GetAllDealersAsync_ShouldReturnAllDealers()
         {
             // Arrange
@@ -38,7 +40,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Services
             _mockRepository.Verify(r => r.GetAllAsync(), Times.Once);
         }
 
-        [Fact]
+        [Test]
         public async Task CreateDealerAsync_WithValidDealer_ShouldReturnTrue()
         {
             // Arrange

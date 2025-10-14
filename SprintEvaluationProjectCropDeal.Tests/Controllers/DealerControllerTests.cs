@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Controllers;
 using SprintEvaluationProjectCropDeal.Models;
@@ -12,14 +12,16 @@ using IAuthService = SprintEvaluationProjectCropDeal.Services.Interfaces.IAuthor
 
 namespace SprintEvaluationProjectCropDeal.Tests.Controllers
 {
+    [TestFixture]
     public class DealerControllerTests
     {
-        private readonly Mock<IDealerService> _mockDealerService;
-        private readonly Mock<ILogger<DealerController>> _mockLogger;
-        private readonly Mock<IAuthService> _mockAuthService;
-        private readonly DealerController _controller;
+        private Mock<IDealerService> _mockDealerService;
+        private Mock<ILogger<DealerController>> _mockLogger;
+        private Mock<IAuthService> _mockAuthService;
+        private DealerController _controller;
 
-        public DealerControllerTests()
+        [SetUp]
+        public void Setup()
         {
             _mockDealerService = new Mock<IDealerService>();
             _mockLogger = new Mock<ILogger<DealerController>>();
@@ -27,7 +29,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Controllers
             _controller = new DealerController(_mockDealerService.Object, _mockLogger.Object, _mockAuthService.Object);
         }
 
-        [Fact]
+        [Test]
         public async Task GetAll_ShouldReturnOkWithDealers()
         {
             // Arrange
@@ -47,7 +49,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Controllers
             returnedDealers.Should().HaveCount(2);
         }
 
-        [Fact]
+        [Test]
         public async Task GetById_WithValidIdAndAuthorization_ShouldReturnOkWithDealer()
         {
             // Arrange

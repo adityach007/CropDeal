@@ -1,24 +1,35 @@
 using Moq;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Models;
 using SprintEvaluationProjectCropDeal.Services.Implementations;
 using SprintEvaluationProjectCropDeal.Repositories.Interfaces;
+using SprintEvaluationProjectCropDeal.Services.Interfaces;
 
 namespace SprintEvaluationProjectCropDeal.Tests.Services
 {
+    [TestFixture]
     public class CropsServiceTests
     {
-        private readonly Mock<ICropsRepository> _mockRepository;
-        private readonly CropsService _cropsService;
+        private Mock<ICropsRepository> _mockCropsRepository;
+        private Mock<IEmailService> _mockEmailService;
+        private Mock<IFarmerRepository> _mockFarmerRepository;
+        private CropsService _cropsService;
 
-        public CropsServiceTests()
+        [SetUp]
+        public void Setup()
         {
-            _mockRepository = new Mock<ICropsRepository>();
-            _cropsService = new CropsService(_mockRepository.Object);
+            _mockCropsRepository = new Mock<ICropsRepository>();
+            _mockEmailService = new Mock<IEmailService>();
+            _mockFarmerRepository = new Mock<IFarmerRepository>();
+            _cropsService = new CropsService(
+                _mockCropsRepository.Object, 
+                _mockEmailService.Object, 
+                _mockFarmerRepository.Object
+            );
         }
 
-        [Fact]
+        [Test]
         public async Task GetAllCropsAsync_ShouldReturnAllCrops()
         {
             // Arrange
@@ -27,7 +38,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Services
                 new Crops { CropId = 1, CropName = "Wheat", CropType = "Grain", FarmerId = 1 },
                 new Crops { CropId = 2, CropName = "Rice", CropType = "Grain", FarmerId = 2 }
             };
-            _mockRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(crops);
+            _mockCropsRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(crops);
 
             // Act
             var result = await _cropsService.GetAllCropsAsync();
@@ -35,10 +46,10 @@ namespace SprintEvaluationProjectCropDeal.Tests.Services
             // Assert
             result.Should().HaveCount(2);
             result.Should().BeEquivalentTo(crops);
-            _mockRepository.Verify(r => r.GetAllAsync(), Times.Once);
+            _mockCropsRepository.Verify(r => r.GetAllAsync(), Times.Once);
         }
 
-        [Fact]
+        [Test]
         public async Task CreateCropAsync_WithValidCrop_ShouldReturnTrue()
         {
             // Arrange
@@ -51,14 +62,14 @@ namespace SprintEvaluationProjectCropDeal.Tests.Services
                 FarmerId = 1
             };
 
-            _mockRepository.Setup(r => r.AddAsync(It.IsAny<Crops>())).Returns(Task.CompletedTask);
+            _mockCropsRepository.Setup(r => r.AddAsync(It.IsAny<Crops>())).Returns(Task.CompletedTask);
 
             // Act
             var result = await _cropsService.CreateCropAsync(crop);
 
             // Assert
             result.Should().BeTrue();
-            _mockRepository.Verify(r => r.AddAsync(crop), Times.Once);
+            _mockCropsRepository.Verify(r => r.AddAsync(crop), Times.Once);
         }
     }
 }

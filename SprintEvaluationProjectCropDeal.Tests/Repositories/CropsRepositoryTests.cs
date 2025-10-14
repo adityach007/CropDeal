@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Data;
 using SprintEvaluationProjectCropDeal.Models;
@@ -7,12 +7,14 @@ using SprintEvaluationProjectCropDeal.Repositories.Implementations;
 
 namespace SprintEvaluationProjectCropDeal.Tests.Repositories
 {
-    public class CropsRepositoryTests : IDisposable
+    [TestFixture]
+    public class CropsRepositoryTests
     {
-        private readonly ApplicationDbContext _context;
-        private readonly CropsRepository _repository;
+        private ApplicationDbContext _context;
+        private CropsRepository _repository;
 
-        public CropsRepositoryTests()
+        [SetUp]
+        public void Setup()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -22,7 +24,13 @@ namespace SprintEvaluationProjectCropDeal.Tests.Repositories
             _repository = new CropsRepository(_context);
         }
 
-        [Fact]
+        [TearDown]
+        public void TearDown()
+        {
+            _context.Dispose();
+        }
+
+        [Test]
         public async Task GetAllAsync_ShouldReturnAllCrops()
         {
             // Arrange
@@ -42,7 +50,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Repositories
             result.Should().HaveCount(2);
         }
 
-        [Fact]
+        [Test]
         public async Task GetByIdAsync_WithValidId_ShouldReturnCrop()
         {
             // Arrange
@@ -68,11 +76,6 @@ namespace SprintEvaluationProjectCropDeal.Tests.Repositories
                 Location = "Test Location",
                 FarmerId = farmerId
             };
-        }
-
-        public void Dispose()
-        {
-            _context.Dispose();
         }
     }
 }

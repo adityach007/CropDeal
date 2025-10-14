@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Xunit;
+using NUnit.Framework;
 using FluentAssertions;
 using SprintEvaluationProjectCropDeal.Data;
 using SprintEvaluationProjectCropDeal.Models;
@@ -7,12 +7,14 @@ using SprintEvaluationProjectCropDeal.Repositories.Implementations;
 
 namespace SprintEvaluationProjectCropDeal.Tests.Repositories
 {
-    public class DealerRepositoryTests : IDisposable
+    [TestFixture]
+    public class DealerRepositoryTests
     {
-        private readonly ApplicationDbContext _context;
-        private readonly DealerRepository _repository;
+        private ApplicationDbContext _context;
+        private DealerRepository _repository;
 
-        public DealerRepositoryTests()
+        [SetUp]
+        public void Setup()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -22,7 +24,13 @@ namespace SprintEvaluationProjectCropDeal.Tests.Repositories
             _repository = new DealerRepository(_context);
         }
 
-        [Fact]
+        [TearDown]
+        public void TearDown()
+        {
+            _context.Dispose();
+        }
+
+        [Test]
         public async Task GetAllAsync_ShouldReturnAllDealers()
         {
             // Arrange
@@ -42,7 +50,7 @@ namespace SprintEvaluationProjectCropDeal.Tests.Repositories
             result.Should().HaveCount(2);
         }
 
-        [Fact]
+        [Test]
         public async Task GetByIdAsync_WithValidId_ShouldReturnDealer()
         {
             // Arrange
@@ -72,11 +80,6 @@ namespace SprintEvaluationProjectCropDeal.Tests.Repositories
                 DealerLocation = "Test Location",
                 IsDealerIdActive = true
             };
-        }
-
-        public void Dispose()
-        {
-            _context.Dispose();
         }
     }
 }
