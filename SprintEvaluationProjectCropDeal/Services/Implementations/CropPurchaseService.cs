@@ -13,17 +13,20 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
         private readonly ICropsRepository _cropsRepository;
         private readonly ILogger<CropPurchaseService> _logger;
         private readonly ApplicationDbContext _db;
+        private readonly IEmailService _emailService;
 
         public CropPurchaseService(
             ICropPurchaseRepository cropPurchaseRepository,
             ICropsRepository cropsRepository,
             ILogger<CropPurchaseService> logger,
-            ApplicationDbContext db)
+            ApplicationDbContext db,
+            IEmailService emailService)
         {
             _cropPurchaseRepository = cropPurchaseRepository;
             _cropsRepository = cropsRepository;
             _logger = logger;
             _db = db;
+            _emailService = emailService;
         }
 
         public async Task<bool> CreatePurchaseRequestAsync(CropPurchaseRequest request)
@@ -44,6 +47,31 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                 };
 
                 await _cropPurchaseRepository.AddAsync(purchase);
+
+                // Get farmer details to send email
+                var farmer = await _db.FarmersDetails.FindAsync(crop.FarmerId);
+                if (farmer != null)
+                {
+                    _logger.LogInformation("Sending purchase request email to farmer: {Email}", farmer.EmailAddressFarmer);
+                    
+                    // Get dealer details for email
+                    var dealer = await _db.DealersDetails.FindAsync(request.DealerId);
+                    
+                    // Calculate total amount
+                    decimal totalAmount = request.QuantityRequested * crop.PricePerUnit;
+                    
+                    await _emailService.SendPurchaseRequestEmailAsync(
+                        farmer.EmailAddressFarmer,
+                        farmer.FarmerName,
+                        dealer?.DealerName ?? "Unknown Dealer",
+                        crop.CropName,
+                        request.QuantityRequested,
+                        totalAmount
+                    );
+                    
+                    _logger.LogInformation("Purchase request email sent successfully to {Email}", farmer.EmailAddressFarmer);
+                }
+                
                 return true;
             }
             catch (Exception ex)
@@ -148,7 +176,7 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                 // Check if enough quantity available
                 if (crop.QuantityInKg < purchase.QuantityRequested)
                 {
-                    _logger.LogWarning("Insufficient quantity for purchase {PurchaseId}. Available: {Available}, Requested: {Requested}", 
+                    _logger.LogWarning("Insufficient quantity for purchase {PurchaseId}. Available: {Available}, Requested: {Requested}",
                         purchaseId, crop.QuantityInKg, purchase.QuantityRequested);
                     return false;
                 }
@@ -159,9 +187,9 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                 // 2. Reduce crop quantity
                 crop.QuantityInKg -= purchase.QuantityRequested;
 
-                // 3. CREATE PAYMENT AUTOMATICALLY
+                // 3. CREATE PAYMENT AUTOMATICALLY WITH COMPLETED STATUS
                 var totalAmount = purchase.QuantityRequested * crop.PricePerUnit;
-                
+
                 var payment = new Payment
                 {
                     FarmerId = crop.FarmerId,
@@ -170,8 +198,8 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                     PurchaseId = purchase.PurchaseId,
                     Amount = totalAmount,
                     TransactionDate = DateTime.UtcNow,
-                    TransactionStatus = "Pending",
-                    CanBeReviewed = false
+                    TransactionStatus = "Completed",  // Changed from "Pending" to "Completed"
+                    CanBeReviewed = true              // Changed from false to true
                 };
 
                 _db.CropPurchases.Update(purchase);
@@ -179,7 +207,54 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                 _db.PaymentsDetails.Add(payment);
 
                 await _db.SaveChangesAsync();
-                
+
+                // 4. Send confirmation email to dealer
+                var dealer = await _db.DealersDetails.FindAsync(purchase.DealerId);
+                if (dealer != null)
+                {
+                    _logger.LogInformation("Sending purchase confirmation email to dealer: {Email}", dealer.DealerEmailAddress);
+
+                    await _emailService.SendPurchaseConfirmedEmailAsync(
+                        dealer.DealerEmailAddress,
+                        dealer.DealerName,
+                        crop.CropName,
+                        purchase.QuantityRequested,
+                        totalAmount
+                    );
+
+                    _logger.LogInformation("Purchase confirmation email sent to {Email}", dealer.DealerEmailAddress);
+
+                    // SEND PAYMENT CONFIRMATION EMAIL
+                    await _emailService.SendPaymentConfirmationEmailAsync(
+                        dealer.DealerEmailAddress,
+                        dealer.DealerName,
+                        crop.CropName,
+                        totalAmount,
+                        "Completed"
+                    );
+
+                    _logger.LogInformation("Payment confirmation email sent to {Email}", dealer.DealerEmailAddress);
+                }
+
+                // 5. Check for low stock and send alert to farmer
+                if (crop.QuantityInKg <= 10)
+                {
+                    var farmer = await _db.FarmersDetails.FindAsync(crop.FarmerId);
+                    if (farmer != null)
+                    {
+                        _logger.LogInformation("Sending low stock alert to farmer: {Email}", farmer.EmailAddressFarmer);
+
+                        await _emailService.SendLowStockAlertEmailAsync(
+                            farmer.EmailAddressFarmer,
+                            farmer.FarmerName,
+                            crop.CropName,
+                            crop.QuantityInKg
+                        );
+
+                        _logger.LogInformation("Low stock alert sent to {Email}", farmer.EmailAddressFarmer);
+                    }
+                }
+
                 _logger.LogInformation("Purchase {PurchaseId} confirmed, crop quantity updated, and payment created successfully", purchaseId);
                 return true;
             }
@@ -189,7 +264,6 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                 return false;
             }
         }
-
         public async Task<IEnumerable<CropPurchase>> GetReviewedPurchasesByCropIdAsync(int cropId)
         {
             return await _db.CropPurchases
@@ -201,7 +275,10 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
         {
             try
             {
-                var purchase = await _db.CropPurchases.FindAsync(purchaseId);
+                var purchase = await _db.CropPurchases
+                    .Include(p => p.Crop)
+                    .FirstOrDefaultAsync(p => p.PurchaseId == purchaseId);
+                    
                 if (purchase == null || !purchase.IsConfirmed || purchase.HasBeenReviewed)
                 {
                     return false;
@@ -214,6 +291,30 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
 
                 _db.CropPurchases.Update(purchase);
                 await _db.SaveChangesAsync();
+
+                // Send review notification to farmer
+                var crop = purchase.Crop;
+                if (crop != null)
+                {
+                    var farmer = await _db.FarmersDetails.FindAsync(crop.FarmerId);
+                    var dealer = await _db.DealersDetails.FindAsync(purchase.DealerId);
+                    
+                    if (farmer != null && dealer != null)
+                    {
+                        _logger.LogInformation("Sending review notification to farmer: {Email}", farmer.EmailAddressFarmer);
+                        
+                        await _emailService.SendReviewNotificationEmailAsync(
+                            farmer.EmailAddressFarmer,
+                            farmer.FarmerName,
+                            dealer.DealerName,
+                            crop.CropName,
+                            rating,
+                            reviewText ?? ""
+                        );
+                        
+                        _logger.LogInformation("Review notification sent to {Email}", farmer.EmailAddressFarmer);
+                    }
+                }
 
                 return true;
             }

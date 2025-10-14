@@ -22,6 +22,7 @@ namespace SprintEvaluationProjectCropDeal.Controllers
         private readonly IFarmerService _farmerService;
         private readonly IDealerService _dealerService;
         private readonly IAdminService _adminService;
+        private readonly IEmailService _emailService;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
@@ -30,6 +31,7 @@ namespace SprintEvaluationProjectCropDeal.Controllers
             IFarmerService farmerService,
             IDealerService dealerService,
             IAdminService adminService,
+            IEmailService emailService,
             ILogger<AuthController> logger)
         {
             _db = db;
@@ -37,6 +39,7 @@ namespace SprintEvaluationProjectCropDeal.Controllers
             _farmerService = farmerService;
             _dealerService = dealerService;
             _adminService = adminService;
+            _emailService = emailService;
             _logger = logger;
         }
 
@@ -86,6 +89,18 @@ namespace SprintEvaluationProjectCropDeal.Controllers
                         newUser = farmer;
                         userId = farmer.FarmerId;
                         userRole = "Farmer";
+
+                        // Send welcome email to farmer
+                        try
+                        {
+                            _logger.LogInformation("Sending welcome email to new farmer: {Email}", request.Email);
+                            await _emailService.SendWelcomeEmailAsync(request.Email, request.Name, userRole);
+                            _logger.LogInformation("Welcome email sent successfully to {Email}", request.Email);
+                        }
+                        catch (Exception emailEx)
+                        {
+                            _logger.LogError(emailEx, "Failed to send welcome email to {Email}, but registration succeeded", request.Email);
+                        }
                         break;
 
                     case UserType.Dealer:
@@ -105,6 +120,18 @@ namespace SprintEvaluationProjectCropDeal.Controllers
                         newUser = dealer;
                         userId = dealer.DealerId;
                         userRole = "Dealer";
+
+                        // Send welcome email to dealer
+                        try
+                        {
+                            _logger.LogInformation("Sending welcome email to new dealer: {Email}", request.Email);
+                            await _emailService.SendWelcomeEmailAsync(request.Email, request.Name, userRole);
+                            _logger.LogInformation("Welcome email sent successfully to {Email}", request.Email);
+                        }
+                        catch (Exception emailEx)
+                        {
+                            _logger.LogError(emailEx, "Failed to send welcome email to {Email}, but registration succeeded", request.Email);
+                        }
                         break;
 
                     case UserType.Admin:
@@ -123,6 +150,18 @@ namespace SprintEvaluationProjectCropDeal.Controllers
                         newUser = admin;
                         userId = admin.AdminId;
                         userRole = "Admin";
+
+                        // Send welcome email to admin
+                        try
+                        {
+                            _logger.LogInformation("Sending welcome email to new admin: {Email}", request.Email);
+                            await _emailService.SendWelcomeEmailAsync(request.Email, request.Name, userRole);
+                            _logger.LogInformation("Welcome email sent successfully to {Email}", request.Email);
+                        }
+                        catch (Exception emailEx)
+                        {
+                            _logger.LogError(emailEx, "Failed to send welcome email to {Email}, but registration succeeded", request.Email);
+                        }
                         break;
 
                     default:
@@ -138,7 +177,7 @@ namespace SprintEvaluationProjectCropDeal.Controllers
                     Email = request.Email,
                     UserType = request.UserType,
                     Token = token,
-                    Message = $"{userRole} registered successfully"
+                    Message = $"{userRole} registered successfully. Welcome email sent!"
                 });
             }
             catch (Exception ex)
@@ -233,8 +272,6 @@ namespace SprintEvaluationProjectCropDeal.Controllers
             }
         }
 
-
-
         private string ValidateRegisterRequest(RegisterRequest request)
         {
             switch (request.UserType)
@@ -322,28 +359,46 @@ namespace SprintEvaluationProjectCropDeal.Controllers
             try
             {
                 byte[] hashWithSaltBytes = Convert.FromBase64String(hash);
-                
+
                 if (hashWithSaltBytes.Length != 48)
                     return false;
-                
+
                 byte[] saltBytes = new byte[16];
                 Array.Copy(hashWithSaltBytes, 0, saltBytes, 0, 16);
-                
+
                 var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000, HashAlgorithmName.SHA256);
                 byte[] hashBytes = pbkdf2.GetBytes(32);
-                
+
                 for (int i = 0; i < 32; i++)
                 {
                     if (hashWithSaltBytes[i + 16] != hashBytes[i])
                         return false;
                 }
-                
+
                 return true;
             }
             catch
             {
                 return false;
             }
+        }
+        
+        [HttpGet("debug/verify-token")]
+        [Authorize]
+        public IActionResult VerifyToken()
+        {
+            var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+            var identity = User.Identity;
+            
+            return Ok(new
+            {
+                IsAuthenticated = identity?.IsAuthenticated,
+                AuthenticationType = identity?.AuthenticationType,
+                Name = identity?.Name,
+                Claims = claims,
+                Role = User.FindFirst(ClaimTypes.Role)?.Value,
+                UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            });
         }
     }
 }

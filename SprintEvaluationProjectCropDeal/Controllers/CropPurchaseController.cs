@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SprintEvaluationProjectCropDeal.Models;
-using SprintEvaluationProjectCropDeal.Models.DTOs.Payment; // ADD THIS LINE
+using SprintEvaluationProjectCropDeal.Models.DTOs.Payment;
 using SprintEvaluationProjectCropDeal.Services.Interfaces;
 using IAuthService = SprintEvaluationProjectCropDeal.Services.Interfaces.IAuthorizationService;
 
@@ -16,29 +16,31 @@ public class CropPurchaseController : ControllerBase
     private readonly ILogger<CropPurchaseController> _logger;
     private readonly IAuthService _authorizationService;
 
-    public CropPurchaseController(ICropPurchaseService cropPurchaseService, ILogger<CropPurchaseController> logger, IAuthService authorizationService)
+    public CropPurchaseController(
+        ICropPurchaseService cropPurchaseService, 
+        ILogger<CropPurchaseController> logger, 
+        IAuthService authorizationService)
     {
         _cropPurchaseService = cropPurchaseService;
         _logger = logger;
         _authorizationService = authorizationService;
     }
 
-    [HttpGet]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<IEnumerable<CropPurchase>>> GetAll()
-    {
-        try
-        {
-            var purchases = await _cropPurchaseService.GetAllCropPurchasesAsync();
-            return Ok(purchases);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all crop purchases");
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
+    // [HttpGet]
+    // [Authorize(Policy = "AdminOnly")]
+    // public async Task<ActionResult<IEnumerable<CropPurchase>>> GetAll()
+    // {
+    //     try
+    //     {
+    //         var purchases = await _cropPurchaseService.GetAllCropPurchasesAsync();
+    //         return Ok(purchases);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.LogError(ex, "Error getting all crop purchases");
+    //         return StatusCode(500, "Internal server error");
+    //     }
+    // }
 
     [HttpPut("crop-details-update-admin/{id}")]
     [Authorize(Policy = "AdminOnly")]
@@ -46,15 +48,16 @@ public class CropPurchaseController : ControllerBase
     {
         try
         {
-            if (id != purchase.PurchaseId) return BadRequest("ID mismatch");
+            if (id != purchase.PurchaseId) 
+                return BadRequest("ID mismatch");
 
             var existingPurchase = await _cropPurchaseService.GetCropPurchaseByIdAsync(id);
-            if (existingPurchase == null) return NotFound();
+            if (existingPurchase == null) 
+                return NotFound();
 
             var userRole = _authorizationService.GetCurrentUserRole(User);
             var userId = _authorizationService.GetCurrentUserId(User);
 
-            // Check authorization
             if (!_authorizationService.IsAdmin(User))
             {
                 if (userRole == "Dealer" && existingPurchase.DealerId != userId)
@@ -62,7 +65,8 @@ public class CropPurchaseController : ControllerBase
             }
 
             var success = await _cropPurchaseService.UpdateCropPurchaseAsync(purchase);
-            if (!success) return BadRequest("Invalid data");
+            if (!success) 
+                return BadRequest("Invalid data");
             
             return NoContent();
         }
@@ -80,12 +84,12 @@ public class CropPurchaseController : ControllerBase
         try
         {
             var purchase = await _cropPurchaseService.GetCropPurchaseByIdAsync(id);
-            if (purchase == null) return NotFound();
+            if (purchase == null) 
+                return NotFound();
 
             var userRole = _authorizationService.GetCurrentUserRole(User);
             var userId = _authorizationService.GetCurrentUserId(User);
 
-            // Check authorization
             if (!_authorizationService.IsAdmin(User))
             {
                 if (userRole == "Dealer" && purchase.DealerId != userId)
@@ -109,14 +113,16 @@ public class CropPurchaseController : ControllerBase
         try
         {
             var userId = _authorizationService.GetCurrentUserId(User);
-            if (!userId.HasValue) return BadRequest("Invalid token");
+            if (!userId.HasValue) 
+                return BadRequest("Invalid token");
 
             request.DealerId = userId.Value;
 
             var success = await _cropPurchaseService.CreatePurchaseRequestAsync(request);
-            if (!success) return BadRequest("Failed to create purchase request");
+            if (!success) 
+                return BadRequest("Failed to create purchase request");
 
-            return Ok(new { Message = "Purchase request created successfully" });
+            return Ok(new { Message = "Purchase request created successfully. Farmer has been notified via email." });
         }
         catch (Exception ex)
         {
@@ -132,9 +138,10 @@ public class CropPurchaseController : ControllerBase
         try
         {
             var success = await _cropPurchaseService.ConfirmPurchaseAndUpdateCropAsync(id);
-            if (!success) return BadRequest("Failed to confirm purchase");
+            if (!success) 
+                return BadRequest("Failed to confirm purchase");
 
-            return Ok(new { Message = "Purchase confirmed successfully" });
+            return Ok(new { Message = "Purchase confirmed successfully. Dealer has been notified via email." });
         }
         catch (Exception ex)
         {
@@ -190,30 +197,30 @@ public class CropPurchaseController : ControllerBase
         try
         {
             var userId = _authorizationService.GetCurrentUserId(User);
-            if (!userId.HasValue) return BadRequest("Invalid token");
+            if (!userId.HasValue) 
+                return BadRequest("Invalid token");
 
             var purchase = await _cropPurchaseService.GetCropPurchaseByIdAsync(purchaseId);
-            if (purchase == null) return NotFound("Purchase not found");
+            if (purchase == null) 
+                return NotFound("Purchase not found");
 
-            // Verify dealer owns this purchase
             if (purchase.DealerId != userId.Value)
                 return Forbid("You can only review your own purchases");
 
-            // Check if purchase is confirmed and not already reviewed
             if (!purchase.IsConfirmed)
                 return BadRequest("Cannot review unconfirmed purchase");
 
             if (purchase.HasBeenReviewed)
                 return BadRequest("This purchase has already been reviewed");
 
-            // Update purchase with review
             purchase.Rating = request.Rating;
             purchase.ReviewText = request.ReviewText;
             purchase.ReviewDate = DateTime.UtcNow;
             purchase.HasBeenReviewed = true;
 
             var success = await _cropPurchaseService.UpdateCropPurchaseAsync(purchase);
-            if (!success) return BadRequest("Failed to submit review");
+            if (!success) 
+                return BadRequest("Failed to submit review");
 
             return Ok(new { Message = "Review submitted successfully" });
         }
@@ -231,7 +238,8 @@ public class CropPurchaseController : ControllerBase
         try
         {
             var purchase = await _cropPurchaseService.GetCropPurchaseByIdAsync(purchaseId);
-            if (purchase == null) return NotFound("Purchase not found");
+            if (purchase == null) 
+                return NotFound("Purchase not found");
 
             if (!purchase.HasBeenReviewed)
                 return NotFound("No review found for this purchase");
@@ -262,7 +270,7 @@ public class CropPurchaseController : ControllerBase
         try
         {
             var purchases = await _cropPurchaseService.GetReviewedPurchasesByCropIdAsync(cropId);
-            
+
             var reviews = purchases.Where(p => p.HasBeenReviewed).Select(p => new
             {
                 PurchaseId = p.PurchaseId,
@@ -280,4 +288,6 @@ public class CropPurchaseController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
+    
+    
 }

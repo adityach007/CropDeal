@@ -4,9 +4,9 @@ namespace SprintEvaluationProjectCropDeal.Models.DTOs.Payment;
 
 public class UpdatePaymentStatusRequest
 {
-    [Required]
     [StringLength(50)]
-    public string Status { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Transaction status is required")]
+    public string Status { get; set; } = "Pending";
 }
 
 public class SubmitReviewRequest

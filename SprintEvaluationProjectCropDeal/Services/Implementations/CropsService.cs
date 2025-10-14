@@ -7,10 +7,17 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations;
 public class CropsService : ICropsService
 {
     private readonly ICropsRepository _cropsRepository;
+    private readonly IEmailService _emailService;
+    private readonly IFarmerRepository _farmerRepository;
 
-    public CropsService(ICropsRepository cropsRepository)
+    public CropsService(
+        ICropsRepository cropsRepository,
+        IEmailService emailService,
+        IFarmerRepository farmerRepository)
     {
         _cropsRepository = cropsRepository;
+        _emailService = emailService;
+        _farmerRepository = farmerRepository;
     }
 
     public async Task<IEnumerable<Crops>> GetAllCropsAsync()
@@ -29,7 +36,30 @@ public class CropsService : ICropsService
         {
             return false;
         }
+        
         await _cropsRepository.AddAsync(crop);
+        
+        // Send email notification to farmer
+        try
+        {
+            var farmer = await _farmerRepository.GetByIdAsync(crop.FarmerId);
+            if (farmer != null && !string.IsNullOrEmpty(farmer.EmailAddressFarmer))
+            {
+                await _emailService.SendCropListingConfirmationAsync(
+                    farmer.EmailAddressFarmer,
+                    farmer.FarmerName,
+                    crop.CropName,
+                    crop.QuantityInKg,
+                    crop.PricePerUnit
+                );
+            }
+        }
+        catch (Exception)
+        {
+            // Log error but don't fail crop creation if email fails
+            // Email failure should not block the main operation
+        }
+        
         return true;
     }
 
@@ -41,8 +71,30 @@ public class CropsService : ICropsService
         }
 
         await _cropsRepository.UpdateAsync(crop);
+        
+        // Send email notification to farmer about update
+        try
+        {
+            var farmer = await _farmerRepository.GetByIdAsync(crop.FarmerId);
+            if (farmer != null && !string.IsNullOrEmpty(farmer.EmailAddressFarmer))
+            {
+                await _emailService.SendCropUpdateNotificationAsync(
+                    farmer.EmailAddressFarmer,
+                    farmer.FarmerName,
+                    crop.CropName,
+                    crop.QuantityInKg,
+                    crop.PricePerUnit
+                );
+            }
+        }
+        catch (Exception)
+        {
+            // Log error but don't fail crop update if email fails
+        }
+        
         return true;
     }
+
 
     public async Task<bool> DeleteCropAsync(int id)
     {
@@ -52,7 +104,29 @@ public class CropsService : ICropsService
             return false;
         }
 
+        // Get farmer details before deleting crop
+        var farmer = await _farmerRepository.GetByIdAsync(crop.FarmerId);
+        var cropName = crop.CropName;
+
         await _cropsRepository.DeleteAsync(crop);
+        
+        // Send email notification to farmer about deletion
+        try
+        {
+            if (farmer != null && !string.IsNullOrEmpty(farmer.EmailAddressFarmer))
+            {
+                await _emailService.SendCropDeletionNotificationAsync(
+                    farmer.EmailAddressFarmer,
+                    farmer.FarmerName,
+                    cropName
+                );
+            }
+        }
+        catch (Exception)
+        {
+            // Log error but don't fail crop deletion if email fails
+        }
+        
         return true;
     }
 
@@ -66,6 +140,4 @@ public class CropsService : ICropsService
     {
         return await _cropsRepository.GetByIdAsNoTrackingAsync(id);
     }
-
-    
 }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SprintEvaluationProjectCropDeal.Data;
 using SprintEvaluationProjectCropDeal.Models;
 using SprintEvaluationProjectCropDeal.Models.DTOs.Payment;
+using SprintEvaluationProjectCropDeal.Services.Interfaces;
 
 namespace SprintEvaluationProjectCropDeal.Controllers;
 
@@ -14,11 +15,16 @@ public class PaymentController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ILogger<PaymentController> _logger;
+    private readonly IEmailService _emailService;
 
-    public PaymentController(ApplicationDbContext db, ILogger<PaymentController> logger)
+    public PaymentController(
+        ApplicationDbContext db, 
+        ILogger<PaymentController> logger,
+        IEmailService emailService)
     {
         _db = db;
         _logger = logger;
+        _emailService = emailService;
     }
 
     [HttpGet("{id}")]
@@ -35,59 +41,7 @@ public class PaymentController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting payment {PaymentId}", id);
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
-    [HttpGet("all-payments")]
-    [Authorize(Policy = "FarmerOrDealer")]
-    public async Task<ActionResult<IEnumerable<Payment>>> GetAllPayments()
-    {
-        try
-        {
-            var payments = await _db.PaymentsDetails.ToListAsync();
-            return Ok(payments);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all payments");
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
-    [HttpGet("by-farmer/{farmerId}")]
-    [Authorize(Policy = "FarmerOnly")]
-    public async Task<ActionResult<IEnumerable<Payment>>> GetPaymentsByFarmerId(int farmerId)
-    {
-        try
-        {
-            var payments = await _db.PaymentsDetails
-                .Where(p => p.FarmerId == farmerId)
-                .ToListAsync();
-            return Ok(payments);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting payments for farmer {FarmerId}", farmerId);
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
-    [HttpGet("by-dealer/{dealerId}")]
-    [Authorize(Policy = "DealerOnly")]
-    public async Task<ActionResult<IEnumerable<Payment>>> GetPaymentsByDealerId(int dealerId)
-    {
-        try
-        {
-            var payments = await _db.PaymentsDetails
-                .Where(p => p.DealerId == dealerId)
-                .ToListAsync();
-            return Ok(payments);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting payments for dealer {DealerId}", dealerId);
+            _logger.LogError(ex, "Error retrieving payment {PaymentId}", id);
             return StatusCode(500, "Internal server error");
         }
     }
@@ -101,11 +55,12 @@ public class PaymentController : ControllerBase
             var payments = await _db.PaymentsDetails
                 .Where(p => p.CropId == cropId)
                 .ToListAsync();
+
             return Ok(payments);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting payments for crop {CropId}", cropId);
+            _logger.LogError(ex, "Error retrieving payments for crop {CropId}", cropId);
             return StatusCode(500, "Internal server error");
         }
     }
@@ -116,9 +71,34 @@ public class PaymentController : ControllerBase
     {
         try
         {
+            var dealerIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(dealerIdClaim))
+            {
+                return Unauthorized("Unable to identify user");
+            }
+            
+            var dealerId = int.Parse(dealerIdClaim);
+
             var payment = await _db.PaymentsDetails.FindAsync(id);
             if (payment == null)
                 return NotFound("Payment not found");
+
+            if (payment.DealerId != dealerId)
+            {
+                return Forbid("You are not authorized to update this payment");
+            }
+
+            var validStatuses = new[] { "Pending", "Processing", "Completed", "Failed", "Cancelled" };
+            if (!validStatuses.Contains(request.Status, StringComparer.OrdinalIgnoreCase))
+            {
+                return BadRequest($"Invalid status. Allowed values: {string.Join(", ", validStatuses)}");
+            }
+
+            if (payment.TransactionStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) ||
+                payment.TransactionStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest($"Cannot update payment with status '{payment.TransactionStatus}'");
+            }
 
             payment.TransactionStatus = request.Status;
             
@@ -129,8 +109,32 @@ public class PaymentController : ControllerBase
 
             _db.PaymentsDetails.Update(payment);
             await _db.SaveChangesAsync();
+
+            // Send email notification
+            var dealer = await _db.DealersDetails.FindAsync(payment.DealerId);
+            var crop = await _db.CropsDetails.FindAsync(payment.CropId);
             
-            return Ok(new { Message = "Payment status updated successfully", Payment = payment });
+            if (dealer != null && crop != null)
+            {
+                await _emailService.SendPaymentConfirmationEmailAsync(
+                    dealer.DealerEmailAddress,
+                    dealer.DealerName,
+                    crop.CropName,
+                    (decimal)payment.Amount,
+                    payment.TransactionStatus
+                );
+            }
+            
+            _logger.LogInformation("Payment {PaymentId} status updated to {Status} by Dealer {DealerId}", 
+                id, request.Status, dealerId);
+            
+            return Ok(new 
+            { 
+                Message = "Payment status updated successfully", 
+                PaymentId = payment.PaymentId,
+                NewStatus = payment.TransactionStatus,
+                CanBeReviewed = payment.CanBeReviewed
+            });
         }
         catch (Exception ex)
         {
@@ -139,9 +143,9 @@ public class PaymentController : ControllerBase
         }
     }
 
-    [HttpDelete("{id}")]
+    [HttpPut("admin/{id}/status")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult> DeletePayment(int id)
+    public async Task<ActionResult> AdminUpdatePaymentStatus(int id, [FromBody] UpdatePaymentStatusRequest request)
     {
         try
         {
@@ -149,14 +153,49 @@ public class PaymentController : ControllerBase
             if (payment == null)
                 return NotFound("Payment not found");
 
-            _db.PaymentsDetails.Remove(payment);
+            var validStatuses = new[] { "Pending", "Processing", "Completed", "Failed", "Cancelled" };
+            if (!validStatuses.Contains(request.Status, StringComparer.OrdinalIgnoreCase))
+            {
+                return BadRequest($"Invalid status. Allowed values: {string.Join(", ", validStatuses)}");
+            }
+
+            payment.TransactionStatus = request.Status;
+            
+            if (request.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                payment.CanBeReviewed = true;
+            }
+
+            _db.PaymentsDetails.Update(payment);
             await _db.SaveChangesAsync();
 
-            return Ok(new { Message = "Payment deleted successfully" });
+            // Send email notification
+            var dealer = await _db.DealersDetails.FindAsync(payment.DealerId);
+            var crop = await _db.CropsDetails.FindAsync(payment.CropId);
+            
+            if (dealer != null && crop != null)
+            {
+                await _emailService.SendPaymentConfirmationEmailAsync(
+                    dealer.DealerEmailAddress,
+                    dealer.DealerName,
+                    crop.CropName,
+                    (decimal)payment.Amount,
+                    payment.TransactionStatus
+                );
+            }
+            
+            _logger.LogInformation("Admin updated Payment {PaymentId} status to {Status}", id, request.Status);
+            
+            return Ok(new 
+            { 
+                Message = "Payment status updated successfully by Admin", 
+                PaymentId = payment.PaymentId,
+                NewStatus = payment.TransactionStatus 
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting payment {PaymentId}", id);
+            _logger.LogError(ex, "Error updating payment status for payment {PaymentId}", id);
             return StatusCode(500, "Internal server error");
         }
     }

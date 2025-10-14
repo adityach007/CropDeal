@@ -12,8 +12,8 @@ using SprintEvaluationProjectCropDeal.Data;
 namespace _.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251011214320_AddPurchaseIdToPaymentTable")]
-    partial class AddPurchaseIdToPaymentTable
+    [Migration("20251013114855_MigrationsStarted")]
+    partial class MigrationsStarted
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
