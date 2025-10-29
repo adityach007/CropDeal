@@ -90,7 +90,8 @@ builder.Services.AddScoped<IAuthService, AuthorizationService>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+var secretKey = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key is not configured");
+var key = Encoding.ASCII.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -101,17 +102,34 @@ builder.Services.AddAuthentication(options =>
 {
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Headers["Authorization"].ToString()?.Replace("Bearer ", "");
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            var te = context.Exception;
+            return Task.CompletedTask;
+        }
+    };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidateAudience = true, // CHANGED FROM false TO true
-        ValidAudience = jwtSettings["Audience"], // ADD THIS LINE
+        ValidIssuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured"),
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured"),
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero,
-        RoleClaimType = System.Security.Claims.ClaimTypes.Role // ADD THIS LINE - CRITICAL!
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
     };
 });
 
@@ -130,12 +148,15 @@ builder.Services.AddAuthorization(options =>
 // CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
+    options.AddPolicy("AllowAngularApp",
+        builder =>
+        {
+            builder.SetIsOriginAllowed(_ => true)
+                   .AllowAnyMethod()
+                   .AllowAnyHeader()
+                   .WithExposedHeaders("Authorization", "Content-Type")
+                   .AllowCredentials();
+        });
 });
 
 var app = builder.Build();
@@ -151,10 +172,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowAngularApp"); // Must come before UseAuthentication
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection(); // Only redirect to HTTPS in production
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run(); 
+app.Run();

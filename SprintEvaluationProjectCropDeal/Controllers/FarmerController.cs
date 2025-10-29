@@ -113,12 +113,28 @@ public class FarmerController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("GetMyProfile called");
+            _logger.LogInformation("User Claims: {Claims}", User.Claims.Select(c => $"{c.Type}: {c.Value}"));
+            _logger.LogInformation("User Identity: {Identity}", User.Identity.IsAuthenticated);
+            _logger.LogInformation("User Roles: {Roles}", User.IsInRole("Farmer"));
+
             var userId = _authorizationService.GetCurrentUserId(User);
-            if (!userId.HasValue) return BadRequest("Invalid token");
+            _logger.LogInformation("User ID from token: {UserId}", userId);
+
+            if (!userId.HasValue) 
+            {
+                _logger.LogWarning("Invalid token - no user ID found");
+                return BadRequest("Invalid token");
+            }
 
             var farmer = await _farmerService.GetFarmerByIdAsync(userId.Value);
-            if (farmer == null) return NotFound();
+            if (farmer == null)
+            {
+                _logger.LogWarning("Farmer not found for ID: {UserId}", userId.Value);
+                return NotFound();
+            }
             
+            _logger.LogInformation("Farmer found: {FarmerId}", farmer.FarmerId);
             return Ok(farmer);
         }
         catch (Exception ex)

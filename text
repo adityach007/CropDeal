@@ -1,8 +1,0 @@
-{
-  "cropId": 2,
-  "cropName": "Apple",
-  "cropType": "Fruit",
-  "quantityInKg": 600,
-  "pricePerUnit": 60,  
-  "location": "Ranchi"
-}

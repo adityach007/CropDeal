@@ -26,22 +26,12 @@ public class CropPurchaseController : ControllerBase
         _authorizationService = authorizationService;
     }
 
-    // [HttpGet]
-    // [Authorize(Policy = "AdminOnly")]
-    // public async Task<ActionResult<IEnumerable<CropPurchase>>> GetAll()
-    // {
-    //     try
-    //     {
-    //         var purchases = await _cropPurchaseService.GetAllCropPurchasesAsync();
-    //         return Ok(purchases);
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         _logger.LogError(ex, "Error getting all crop purchases");
-    //         return StatusCode(500, "Internal server error");
-    //     }
-    // }
-
+    /// <summary>
+    /// Updates a crop purchase request (Admin only)
+    /// </summary>
+    /// <param name="id">The ID of the purchase request</param>
+    /// <param name="purchase">The updated purchase request</param>
+    /// <returns></returns>
     [HttpPut("crop-details-update-admin/{id}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult> Update(int id, CropPurchase purchase)
