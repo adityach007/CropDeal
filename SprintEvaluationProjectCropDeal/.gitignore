@@ -4,6 +4,7 @@
 bin/
 obj/
 launchSettings.json
+appsettings*.json
 
 # User secrets and local settings
 appsettings.Development.json
