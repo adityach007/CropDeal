@@ -187,24 +187,11 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                 // 2. Reduce crop quantity
                 crop.QuantityInKg -= purchase.QuantityRequested;
 
-                // 3. CREATE PAYMENT AUTOMATICALLY WITH COMPLETED STATUS
+                // 3. Save changes (payment will be created later when dealer clicks Pay Now)
                 var totalAmount = purchase.QuantityRequested * crop.PricePerUnit;
-
-                var payment = new Payment
-                {
-                    FarmerId = crop.FarmerId,
-                    DealerId = purchase.DealerId,
-                    CropId = purchase.CropId,
-                    PurchaseId = purchase.PurchaseId,
-                    Amount = totalAmount,
-                    TransactionDate = DateTime.UtcNow,
-                    TransactionStatus = "Completed",  // Changed from "Pending" to "Completed"
-                    CanBeReviewed = true              // Changed from false to true
-                };
 
                 _db.CropPurchases.Update(purchase);
                 _db.CropsDetails.Update(crop);
-                _db.PaymentsDetails.Add(payment);
 
                 await _db.SaveChangesAsync();
 
@@ -223,17 +210,6 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                     );
 
                     _logger.LogInformation("Purchase confirmation email sent to {Email}", dealer.DealerEmailAddress);
-
-                    // SEND PAYMENT CONFIRMATION EMAIL
-                    await _emailService.SendPaymentConfirmationEmailAsync(
-                        dealer.DealerEmailAddress,
-                        dealer.DealerName,
-                        crop.CropName,
-                        totalAmount,
-                        "Completed"
-                    );
-
-                    _logger.LogInformation("Payment confirmation email sent to {Email}", dealer.DealerEmailAddress);
                 }
 
                 // 5. Check for low stock and send alert to farmer
@@ -255,7 +231,7 @@ namespace SprintEvaluationProjectCropDeal.Services.Implementations
                     }
                 }
 
-                _logger.LogInformation("Purchase {PurchaseId} confirmed, crop quantity updated, and payment created successfully", purchaseId);
+                _logger.LogInformation("Purchase {PurchaseId} confirmed and crop quantity updated successfully", purchaseId);
                 return true;
             }
             catch (Exception ex)

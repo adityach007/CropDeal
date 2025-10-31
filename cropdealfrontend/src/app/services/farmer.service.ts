@@ -12,6 +12,7 @@ export interface Farmer {
   farmerIFSCCode: string;
   farmerLocation: string;
   isFarmerIdActive: boolean;
+  isVerified: boolean;
   subscriberCount: number;
 }
 
@@ -39,6 +40,11 @@ export interface CropPurchase {
   crop?: Crop;
 }
 
+export interface CropPurchaseRequest {
+  cropId: number;
+  quantityRequested: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -61,5 +67,29 @@ export class FarmerService {
 
   getSubscriberCount(farmerId: number): Observable<number> {
     return this.http.get<number>(`${this.apiUrl}/Farmer/get-subscriber-count/${farmerId}`);
+  }
+
+  getAllFarmers(): Observable<Farmer[]> {
+    return this.http.get<Farmer[]>(`${this.apiUrl}/Farmer/all-farmers`);
+  }
+
+  getAllFarmersPublic(): Observable<Farmer[]> {
+    return this.http.get<Farmer[]>(`${this.apiUrl}/Farmer/public/all-farmers`);
+  }
+
+  toggleFarmerVerification(farmerId: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/Farmer/verify-farmer-admin/${farmerId}`, {});
+  }
+
+  confirmCropPurchase(purchaseId: number): Observable<CropPurchase> {
+    return this.http.put<CropPurchase>(`${this.apiUrl}/CropPurchase/confirm/${purchaseId}`, {});
+  }
+
+  createCropPurchaseRequest(request: CropPurchaseRequest): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/CropPurchase/crop-request-by-dealer/request`, request);
+  }
+
+  updateFarmerProfile(farmer: Farmer): Observable<any> {
+    return this.http.put(`${this.apiUrl}/Farmer/current-farmer-details-update/profile`, farmer);
   }
 }

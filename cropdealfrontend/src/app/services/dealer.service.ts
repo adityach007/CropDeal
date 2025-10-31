@@ -14,34 +14,6 @@ export interface Dealer {
   isDealerIdActive: boolean;
 }
 
-export interface CropPurchase {
-  purchaseId: number;
-  cropId: number;
-  dealerId: number;
-  quantityRequested: number;
-  requestedAt: Date;
-  isConfirmed: boolean;
-  rating?: number;
-  reviewText?: string;
-  reviewDate?: Date;
-  hasBeenReviewed: boolean;
-  crop?: {
-    cropId: number;
-    cropName: string;
-    cropType: string;
-    quantityInKg: number;
-    pricePerUnit: number;
-    location: string;
-  };
-}
-
-export interface FarmerSubscription {
-  farmerId: number;
-  farmerName: string;
-  location: string;
-  subscribedDate: Date;
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -54,14 +26,6 @@ export class DealerService {
     return this.http.get<Dealer>(`${this.apiUrl}/Dealer/current-dealer-details/profile`);
   }
 
-  getDealerPurchases(dealerId: number): Observable<CropPurchase[]> {
-    return this.http.get<CropPurchase[]>(`${this.apiUrl}/CropPurchase/by-dealer/${dealerId}`);
-  }
-
-  getSubscribedFarmers(): Observable<FarmerSubscription[]> {
-    return this.http.get<FarmerSubscription[]>(`${this.apiUrl}/Dealer/subscriptions`);
-  }
-
   subscribeToFarmer(farmerId: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/Dealer/subscribe`, { farmerId });
   }
@@ -70,23 +34,15 @@ export class DealerService {
     return this.http.post(`${this.apiUrl}/Dealer/unsubscribe/${farmerId}`, {});
   }
 
-  checkSubscriptionStatus(farmerId: number): Observable<boolean> {
-    return this.http.get<boolean>(`${this.apiUrl}/Dealer/check-subscription/${farmerId}`);
+  getSubscribedFarmers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/Dealer/subscriptions`);
   }
 
-  submitPurchaseReview(purchaseId: number, rating: number, reviewText: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/CropPurchase/crop-purchased-submit/${purchaseId}/review`, {
-      rating,
-      reviewText
-    });
+  checkSubscriptionStatus(farmerId: number): Observable<{isSubscribed: boolean}> {
+    return this.http.get<{isSubscribed: boolean}>(`${this.apiUrl}/Dealer/check-subscription/${farmerId}`);
   }
 
-  private getDealerId(): string {
-    const user = localStorage.getItem('auth');
-    if (user) {
-      const userData = JSON.parse(user);
-      return userData.dealerId;
-    }
-    return '';
+  updateDealerProfile(dealer: Dealer): Observable<any> {
+    return this.http.put(`${this.apiUrl}/Dealer/current-dealer-details-update/profile`, dealer);
   }
 }

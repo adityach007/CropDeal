@@ -24,6 +24,9 @@ public class Crops
     // Foreign Key
     public int FarmerId { get; set; }
 
+    // Navigation property
+    public Farmer? Farmer { get; set; }
+
     [Required]
     [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
     public int PricePerUnit { get; set; }

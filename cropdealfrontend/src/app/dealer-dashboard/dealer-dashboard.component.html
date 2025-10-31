@@ -1,0 +1,96 @@
+<div class="dealer-dashboard-container">
+  <header class="dashboard-header animate-fade-in">
+    <div class="header-content">
+      <div class="welcome-section">
+        <div class="avatar">
+          <i class="material-icons">business</i>
+        </div>
+        <div class="welcome-text">
+          <h1>Dealer Dashboard</h1>
+          <p class="subtitle">Discover and purchase quality crops from farmers</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" routerLink="/dealer/marketplace">
+          <i class="material-icons">storefront</i>
+          Browse Marketplace
+        </button>
+        <button class="btn btn-secondary" routerLink="/dealer/browse-crops">
+          <i class="material-icons">shopping_cart</i>
+          My Purchases
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Stats -->
+  <div class="stats-section animate-fade-in">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="material-icons">shopping_cart</i>
+      </div>
+      <div class="stat-content">
+        <h3>0</h3>
+        <p>Total Purchases</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="material-icons">pending</i>
+      </div>
+      <div class="stat-content">
+        <h3>0</h3>
+        <p>Pending Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="material-icons">check_circle</i>
+      </div>
+      <div class="stat-content">
+        <h3>0</h3>
+        <p>Completed Orders</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="quick-actions animate-fade-in">
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="material-icons">flash_on</i> Quick Actions</h2>
+      </div>
+      <div class="card-body">
+        <div class="actions-grid">
+          <button class="action-btn" routerLink="/dealer/marketplace">
+            <div class="action-icon">
+              <i class="material-icons">search</i>
+            </div>
+            <div class="action-content">
+              <h3>Browse Crops</h3>
+              <p>Find fresh crops from local farmers</p>
+            </div>
+          </button>
+          <button class="action-btn" routerLink="/dealer/browse-crops">
+            <div class="action-icon">
+              <i class="material-icons">receipt</i>
+            </div>
+            <div class="action-content">
+              <h3>View Orders</h3>
+              <p>Check your purchase history</p>
+            </div>
+          </button>
+          <button class="action-btn" routerLink="/dealer/browse-farmers">
+            <div class="action-icon">
+              <i class="material-icons">people</i>
+            </div>
+            <div class="action-content">
+              <h3>Browse Farmers</h3>
+              <p>Connect with trusted farmers</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -98,13 +98,18 @@ public class CropPurchaseController : ControllerBase
 
     [HttpPost("crop-request-by-dealer/request")]
     [Authorize(Policy = "DealerOnly")]
-    public async Task<ActionResult> CreatePurchaseRequest(CropPurchaseRequest request)
+    public async Task<ActionResult> CreatePurchaseRequest(CropPurchaseRequest request, [FromServices] IDealerService dealerService)
     {
         try
         {
             var userId = _authorizationService.GetCurrentUserId(User);
             if (!userId.HasValue) 
                 return BadRequest("Invalid token");
+
+            // Check if dealer is active
+            var dealer = await dealerService.GetDealerByIdAsync(userId.Value);
+            if (dealer == null || !dealer.IsDealerIdActive)
+                return BadRequest("Your account is inactive. Please contact admin.");
 
             request.DealerId = userId.Value;
 
@@ -140,6 +145,7 @@ public class CropPurchaseController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "DealerOnly")]
     [HttpGet("by-dealer/{dealerId}")]
     public async Task<ActionResult<IEnumerable<CropPurchase>>> GetByDealerId(int dealerId)
     {

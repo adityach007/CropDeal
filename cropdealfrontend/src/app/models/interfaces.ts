@@ -16,6 +16,7 @@ export interface Farmer {
     farmerIFSCCode: string;
     farmerAadharNumber: string;
     isFarmerIdActive: boolean;
+    isVerified: boolean;
     subscriberCount: number;
 }
 
@@ -41,4 +42,16 @@ export interface CropPurchase {
     hasBeenReviewed: boolean;
     crop?: Crop;
     dealer?: Dealer;
+}
+
+export interface Payment {
+  paymentId: number;
+  farmerId: number;
+  dealerId: number;
+  cropId: number;
+  purchaseId: number;
+  amount: number;
+  transactionDate: Date;
+  transactionStatus: string;
+  canBeReviewed: boolean;
 }

@@ -244,6 +244,9 @@ namespace _.Migrations
                     b.Property<bool>("IsFarmerIdActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -302,6 +305,12 @@ namespace _.Migrations
 
                     b.Property<int>("PurchaseId")
                         .HasColumnType("int");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripeSessionId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("TransactionDate")
                         .HasColumnType("datetime2");
@@ -364,11 +373,13 @@ namespace _.Migrations
 
             modelBuilder.Entity("Crops", b =>
                 {
-                    b.HasOne("SprintEvaluationProjectCropDeal.Models.Farmer", null)
+                    b.HasOne("SprintEvaluationProjectCropDeal.Models.Farmer", "Farmer")
                         .WithMany("Crops")
                         .HasForeignKey("FarmerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Farmer");
                 });
 
             modelBuilder.Entity("SprintEvaluationProjectCropDeal.Models.CropPurchase", b =>

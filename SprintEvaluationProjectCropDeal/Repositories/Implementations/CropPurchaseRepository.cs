@@ -27,6 +27,8 @@ namespace SprintEvaluationProjectCropDeal.Repositories.Implementations
         public async Task<IEnumerable<CropPurchase>> GetByDealerIdAsync(int dealerId)
         {
             return await _context.CropPurchases
+                .Include(p => p.Crop)
+                    .ThenInclude(c => c.Farmer)
                 .Where(p => p.DealerId == dealerId)
                 .ToListAsync();
         }

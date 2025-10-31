@@ -40,6 +40,10 @@ public class Farmer
     [Required]
     public bool IsFarmerIdActive { get; set; } = true;
 
+    // Used to know whether the farmer is verified by admin
+    [Required]
+    public bool IsVerified { get; set; } = false;
+
     // Navigation properties for cascade delete
     public ICollection<Crops> Crops { get; set; }
     public ICollection<Payment> Payments { get; set; }

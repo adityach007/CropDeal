@@ -1,0 +1,33 @@
+<div class="payment-container">
+  <div class="payment-card">
+    <h2>💳 Complete Payment</h2>
+    
+    <div *ngIf="!loading && !error && !success" class="payment-info">
+      <p><strong>Purchase ID:</strong> {{ purchaseId }}</p>
+      <p class="test-info">⚠️ Test Mode: Payment will be automatically approved</p>
+      
+      <button (click)="processPayment()" class="btn-pay">
+        💳 Pay with Stripe
+      </button>
+    </div>
+    
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Processing payment...</p>
+    </div>
+    
+    <div *ngIf="error" class="error-state">
+      <span class="error-icon">❌</span>
+      <p>{{ error }}</p>
+      <button (click)="goBack()" class="btn-back">
+        Back to Dashboard
+      </button>
+    </div>
+    
+    <div *ngIf="success" class="success-state">
+      <span class="success-icon">✅</span>
+      <h3>Payment Successful!</h3>
+      <p>Redirecting to dashboard...</p>
+    </div>
+  </div>
+</div>

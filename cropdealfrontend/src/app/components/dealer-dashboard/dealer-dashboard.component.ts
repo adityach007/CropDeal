@@ -1,250 +1,687 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../services/auth.service';
-import { DealerService } from '../../services/dealer.service';
+import { DealerService, Dealer } from '../../services/dealer.service';
+import { CropsService } from '../../services/crops.service';
+import { PurchasesService } from '../../services/purchases.service';
+import { PaymentService } from '../../services/payment.service';
+import { ManagePurchasesComponent } from '../manage-purchases/manage-purchases.component';
+import { AvailableCropsComponent } from '../available-crops/available-crops.component';
+import { SubscribedFarmersComponent } from '../subscribed-farmers/subscribed-farmers.component';
 
 @Component({
   selector: 'app-dealer-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatProgressSpinnerModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    ManagePurchasesComponent,
+    AvailableCropsComponent,
+    SubscribedFarmersComponent
+  ],
+  styleUrls: ['./dealer-dashboard.component.css'],
   template: `
     <div class="dashboard-container">
       <header class="dashboard-header">
-        <h1>Welcome, {{dealerDetails?.dealerName}}</h1>
-        <button class="logout-btn" (click)="logout()">Logout</button>
+        <div class="header-gradient"></div>
+        <div class="header-content">
+          <div class="welcome-section">
+            <div class="avatar-wrapper">
+              <div class="avatar">
+                <i class="material-icons">business</i>
+              </div>
+              <div class="status-indicator"></div>
+            </div>
+            <div class="welcome-text">
+              <h1>Welcome back, {{dealerDetails?.dealerName || 'Dealer'}}!</h1>
+              <p class="subtitle">
+                <i class="material-icons">location_on</i>
+                {{dealerDetails?.dealerLocation || 'Location'}}
+              </p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <div class="dashboard-grid">
-        <!-- Dealer Profile Card -->
-        <div class="dashboard-card profile-card">
-          <h2>Dealer Profile</h2>
-          <div class="profile-details" *ngIf="dealerDetails">
-            <div class="detail-item">
-              <span class="label">Name:</span>
-              <span class="value">{{dealerDetails.dealerName}}</span>
+      <div class="stats-section">
+        <div class="stat-card stat-primary">
+          <div class="stat-icon-wrapper">
+            <div class="stat-icon">
+              <i class="material-icons">shopping_cart</i>
             </div>
-            <div class="detail-item">
-              <span class="label">Email:</span>
-              <span class="value">{{dealerDetails.dealerEmailAddress}}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Phone:</span>
-              <span class="value">{{dealerDetails.dealerPhoneNumber}}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Location:</span>
-              <span class="value">{{dealerDetails.dealerLocation}}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Bank Account:</span>
-              <span class="value">{{dealerDetails.dealerBankAccount}}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">IFSC Code:</span>
-              <span class="value">{{dealerDetails.dealerIFSCode}}</span>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{getTotalPurchases()}}</div>
+            <div class="stat-label">Total Purchases</div>
+            <div class="stat-trend">
+              <i class="material-icons">trending_up</i>
+              <span>View All</span>
             </div>
           </div>
         </div>
 
-        <!-- Purchase History Card -->
-        <div class="dashboard-card">
-          <h2>Purchase History</h2>
-          <div class="purchase-history" *ngIf="purchases.length > 0; else noPurchases">
-            <div class="purchase-item" *ngFor="let purchase of purchases">
-              <div class="purchase-header">
-                <h3>Purchase #{{purchase.purchaseId}}</h3>
-                <span [class]="'status ' + (purchase.isConfirmed ? 'confirmed' : 'pending')">
-                  {{purchase.isConfirmed ? 'Confirmed' : 'Pending'}}
-                </span>
+        <div class="stat-card stat-success">
+          <div class="stat-icon-wrapper">
+            <div class="stat-icon">
+              <i class="material-icons">payment</i>
+            </div>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{getTotalPayments()}}</div>
+            <div class="stat-label">Payment Records</div>
+            <div class="stat-trend">
+              <i class="material-icons">receipt</i>
+              <span>Transactions</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-info">
+          <div class="stat-icon-wrapper">
+            <div class="stat-icon">
+              <i class="material-icons">agriculture</i>
+            </div>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{getAvailableCrops()}}</div>
+            <div class="stat-label">Available Crops</div>
+            <div class="stat-trend">
+              <i class="material-icons">eco</i>
+              <span>In Market</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card stat-warning">
+          <div class="stat-icon-wrapper">
+            <div class="stat-icon">
+              <i class="material-icons">people</i>
+            </div>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">{{dealerDetails?.isDealerIdActive ? 'Active' : 'Inactive'}}</div>
+            <div class="stat-label">Account Status</div>
+            <div class="stat-trend">
+              <i class="material-icons">{{dealerDetails?.isDealerIdActive ? 'check_circle' : 'pending'}}</i>
+              <span>{{dealerDetails?.isDealerIdActive ? 'Verified' : 'Pending'}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="main-content">
+          <div class="card">
+            <app-available-crops></app-available-crops>
+          </div>
+
+          <div class="card">
+            <app-manage-purchases></app-manage-purchases>
+          </div>
+
+          <div class="card">
+            <app-subscribed-farmers></app-subscribed-farmers>
+          </div>
+        </div>
+
+        <div class="sidebar">
+          <div class="card profile-card">
+            <div class="card-header">
+              <div class="header-left">
+                <i class="material-icons">account_circle</i>
+                <h2>Profile</h2>
               </div>
-              <div class="purchase-details">
-                <p><strong>Crop:</strong> {{purchase.crop?.cropName}}</p>
-                <p><strong>Quantity:</strong> {{purchase.quantityRequested}} kg</p>
-                <p><strong>Date:</strong> {{purchase.requestedAt | date:'medium'}}</p>
-                <div class="review" *ngIf="purchase.isConfirmed && !purchase.hasBeenReviewed">
-                  <button class="review-btn" (click)="submitReview(purchase)">Write Review</button>
+              <button class="btn-icon" routerLink="/dealer/profile">
+                <i class="material-icons">edit</i>
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="loading-spinner" *ngIf="loading.profile">
+                <mat-spinner diameter="40"></mat-spinner>
+              </div>
+              <div class="profile-info" *ngIf="!loading.profile && dealerDetails">
+                <div class="info-row">
+                  <div class="info-icon">
+                    <i class="material-icons">email</i>
+                  </div>
+                  <div class="info-text">
+                    <span class="label">Email</span>
+                    <span class="value">{{dealerDetails.dealerEmailAddress}}</span>
+                  </div>
                 </div>
-                <div class="review" *ngIf="purchase.hasBeenReviewed">
-                  <p><strong>Your Rating:</strong> {{purchase.rating}}/5</p>
-                  <p><strong>Your Review:</strong> {{purchase.reviewText}}</p>
+                <div class="info-row">
+                  <div class="info-icon">
+                    <i class="material-icons">phone</i>
+                  </div>
+                  <div class="info-text">
+                    <span class="label">Phone</span>
+                    <span class="value">{{dealerDetails.dealerPhoneNumber}}</span>
+                  </div>
+                </div>
+                <div class="info-row">
+                  <div class="info-icon">
+                    <i class="material-icons">account_balance</i>
+                  </div>
+                  <div class="info-text">
+                    <span class="label">Bank Account</span>
+                    <span class="value">{{dealerDetails.dealerBankAccount}}</span>
+                  </div>
+                </div>
+                <div class="info-row">
+                  <div class="info-icon">
+                    <i class="material-icons">code</i>
+                  </div>
+                  <div class="info-text">
+                    <span class="label">IFSC Code</span>
+                    <span class="value">{{dealerDetails.dealerIFSCode}}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <ng-template #noPurchases>
-            <p class="no-data">No purchase history available</p>
-          </ng-template>
-        </div>
 
-        <!-- Subscribed Farmers Card -->
-        <div class="dashboard-card">
-          <h2>Subscribed Farmers</h2>
-          <div class="farmers-list" *ngIf="subscribedFarmers.length > 0; else noFarmers">
-            <div class="farmer-item" *ngFor="let subscription of subscribedFarmers">
-              <div class="farmer-header">
-                <h3>{{subscription.farmerName}}</h3>
-                <button class="unsubscribe-btn" (click)="unsubscribeFromFarmer(subscription.farmerId)">
-                  Unsubscribe
+          <div class="card quick-actions-card">
+            <div class="card-header">
+              <div class="header-left">
+                <i class="material-icons">flash_on</i>
+                <h2>Quick Actions</h2>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="quick-actions">
+                <button class="action-btn" routerLink="/dealer/browse-farmers">
+                  <i class="material-icons">people</i>
+                  <span>View Farmers</span>
+                </button>
+                <button class="action-btn" routerLink="/dealer/profile">
+                  <i class="material-icons">settings</i>
+                  <span>Edit Profile</span>
                 </button>
               </div>
-              <div class="farmer-details">
-                <p><strong>Location:</strong> {{subscription.location}}</p>
-                <p><strong>Subscribed Since:</strong> {{subscription.subscribedDate | date:'mediumDate'}}</p>
-              </div>
             </div>
           </div>
-          <ng-template #noFarmers>
-            <p class="no-data">No subscribed farmers</p>
-          </ng-template>
         </div>
       </div>
     </div>
   `,
   styles: [`
     .dashboard-container {
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      padding: 1.5rem;
     }
 
     .dashboard-header {
+      position: relative;
+      background: white;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+
+    .header-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      opacity: 0.9;
+    }
+
+    .header-content {
+      position: relative;
+      padding: 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
-      padding: 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      gap: 2rem;
     }
 
-    h1 {
-      color: #2e7d32;
-      margin: 0;
+    .welcome-section {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
     }
 
-    .logout-btn {
-      padding: 8px 16px;
-      background-color: #ff5722;
+    .avatar-wrapper {
+      position: relative;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(240, 147, 251, 0.4);
+      border: 4px solid white;
+    }
+
+    .avatar i {
       color: white;
+      font-size: 2.5rem;
+    }
+
+    .status-indicator {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      width: 16px;
+      height: 16px;
+      background: #10b981;
+      border: 3px solid white;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    .welcome-text h1 {
+      color: white;
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.95);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .subtitle i {
+      font-size: 1.2rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
       border: none;
-      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
     }
 
-    .logout-btn:hover {
-      background-color: #f4511e;
+    .btn-primary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
     }
 
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(240, 147, 251, 0.5);
     }
 
-    .dashboard-card {
+    .btn-outline {
       background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      color: #f5576c;
+      border: 2px solid #f5576c;
     }
 
-    h2 {
-      color: #2e7d32;
-      margin-bottom: 20px;
+    .btn-outline:hover {
+      background: #f5576c;
+      color: white;
+    }
+
+    .btn-outline-danger {
+      background: white;
+      color: #ef4444;
+      border: 2px solid #ef4444;
+    }
+
+    .btn-outline-danger:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    .stats-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 1.25rem;
+      padding: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+
+    .stat-card:hover::before {
+      width: 100%;
+      opacity: 0.05;
+    }
+
+    .stat-primary::before { background: #f093fb; }
+    .stat-success::before { background: #10b981; }
+    .stat-info::before { background: #3b82f6; }
+    .stat-warning::before { background: #f59e0b; }
+
+    .stat-icon-wrapper {
+      position: relative;
+    }
+
+    .stat-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-primary .stat-icon {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-success .stat-icon {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .stat-info .stat-icon {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .stat-warning .stat-icon {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .stat-icon i {
+      color: white;
+      font-size: 1.75rem;
+    }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      color: #6b7280;
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-trend {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      color: #9ca3af;
+      font-size: 0.85rem;
+    }
+
+    .stat-trend i {
+      font-size: 1rem;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 2rem;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1.25rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header-left i {
+      color: #f5576c;
       font-size: 1.5rem;
     }
 
-    .profile-card .detail-item {
+    .card-header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin: 0;
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 0.5rem;
+      border: none;
+      background: #f3f4f6;
+      color: #6b7280;
+      cursor: pointer;
       display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .label {
-      color: #666;
-      font-weight: 500;
-    }
-
-    .value {
-      color: #333;
-    }
-
-    .purchase-item, .farmer-item {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 15px;
-    }
-
-    .purchase-header, .farmer-header {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      justify-content: center;
+      transition: all 0.2s ease;
     }
 
-    .status {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.875rem;
+    .btn-icon:hover {
+      background: #f5576c;
+      color: white;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .profile-info {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 0.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .info-row:hover {
+      background: #f3f4f6;
+    }
+
+    .info-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .info-icon i {
+      color: white;
+      font-size: 1.2rem;
+    }
+
+    .info-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .info-text .label {
+      font-size: 0.8rem;
+      color: #9ca3af;
       font-weight: 500;
     }
 
-    .status.confirmed {
-      background-color: #c8e6c9;
-      color: #2e7d32;
+    .info-text .value {
+      font-size: 0.95rem;
+      color: #1f2937;
+      font-weight: 600;
     }
 
-    .status.pending {
-      background-color: #fff3e0;
-      color: #f57c00;
+    .quick-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
     }
 
-    .purchase-details, .farmer-details {
-      color: #555;
-      font-size: 0.9rem;
-    }
-
-    .review-btn {
-      padding: 6px 12px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: #f9fafb;
+      border: 2px solid #f3f4f6;
+      border-radius: 0.75rem;
       cursor: pointer;
-      margin-top: 10px;
+      transition: all 0.2s ease;
+      font-weight: 600;
+      color: #1f2937;
     }
 
-    .review-btn:hover {
-      background-color: #388e3c;
-    }
-
-    .unsubscribe-btn {
-      padding: 6px 12px;
-      background-color: #ff5722;
+    .action-btn:hover {
+      background: #f5576c;
       color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.875rem;
+      border-color: #f5576c;
     }
 
-    .unsubscribe-btn:hover {
-      background-color: #f4511e;
+    .action-btn i {
+      font-size: 1.5rem;
     }
 
-    .no-data {
-      color: #666;
-      text-align: center;
-      font-style: italic;
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    @media (max-width: 1200px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+      }
     }
 
     @media (max-width: 768px) {
-      .dashboard-grid {
+      .dashboard-container {
+        padding: 1rem;
+      }
+
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .welcome-section {
+        flex-direction: column;
+      }
+
+      .header-actions {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .stats-section {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
         grid-template-columns: 1fr;
       }
     }
@@ -252,14 +689,18 @@ import { DealerService } from '../../services/dealer.service';
 })
 export class DealerDashboardComponent implements OnInit {
   dealerDetails: any = null;
-  dealerId: number | null = null;
-  purchases: any[] = [];
-  subscribedFarmers: any[] = [];
+  loading = { profile: false };
+  totalPurchases = 0;
+  totalPayments = 0;
+  availableCrops = 0;
 
   constructor(
     private dealerService: DealerService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cropsService: CropsService,
+    private purchasesService: PurchasesService,
+    private paymentService: PaymentService
   ) {}
 
   ngOnInit() {
@@ -268,67 +709,57 @@ export class DealerDashboardComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
-    
-    this.dealerId = currentUser.userId;
     this.loadDealerDetails();
-    this.loadPurchases();
-    this.loadSubscribedFarmers();
   }
 
   private loadDealerDetails() {
-
+    this.loading.profile = true;
     this.dealerService.getDealerProfile().subscribe({
-      next: (dealer) => {
+      next: (dealer: any) => {
         this.dealerDetails = dealer;
+        this.loading.profile = false;
+        this.loadDashboardData();
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading dealer details:', error);
+        this.loading.profile = false;
       }
     });
   }
 
-  private loadPurchases() {
-    if (this.dealerId) {
-      this.dealerService.getDealerPurchases(this.dealerId).subscribe({
-        next: (purchases) => {
-          this.purchases = purchases;
-        },
-        error: (error) => {
-          console.error('Error loading purchases:', error);
-        }
+  private loadDashboardData() {
+    this.cropsService.getAllCrops().subscribe({
+      next: (crops: any) => this.availableCrops = crops.length,
+      error: (error: any) => console.error('Error loading crops:', error)
+    });
+
+    if (this.dealerDetails?.dealerId) {
+      this.purchasesService.getMyPurchases(this.dealerDetails.dealerId).subscribe({
+        next: (purchases: any) => this.totalPurchases = purchases.length,
+        error: (error: any) => console.error('Error loading purchases:', error)
+      });
+
+      this.paymentService.getPaymentsByDealer(this.dealerDetails.dealerId).subscribe({
+        next: (payments: any) => this.totalPayments = payments.length,
+        error: (error: any) => console.error('Error loading payments:', error)
       });
     }
   }
 
-  private loadSubscribedFarmers() {
-    this.dealerService.getSubscribedFarmers().subscribe({
-      next: (farmers) => {
-        this.subscribedFarmers = farmers;
-      },
-      error: (error) => {
-        console.error('Error loading subscribed farmers:', error);
-      }
-    });
-  }
-
-  submitReview(purchase: any) {
-    // This would open a modal or navigate to a review form
-    console.log('Submit review for purchase:', purchase);
-  }
-
-  unsubscribeFromFarmer(farmerId: number) {
-    this.dealerService.unsubscribeFromFarmer(farmerId).subscribe({
-      next: () => {
-        this.loadSubscribedFarmers(); // Reload the subscriptions
-      },
-      error: (error) => {
-        console.error('Error unsubscribing from farmer:', error);
-      }
-    });
-  }
-
   logout() {
     this.authService.logout();
-    this.router.navigate(['/']);
+    this.router.navigate(['/login']);
+  }
+
+  getTotalPurchases(): number {
+    return this.totalPurchases;
+  }
+
+  getTotalPayments(): number {
+    return this.totalPayments;
+  }
+
+  getAvailableCrops(): number {
+    return this.availableCrops;
   }
 }

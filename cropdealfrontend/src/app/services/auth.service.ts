@@ -7,6 +7,19 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  userType: number;
+  aadharNumber: string;
+  bankAccount?: string;
+  ifscCode?: string;
+  location?: string;
+  isActive: boolean;
+}
+
 export interface AuthResponse {
   userId: number;
   name: string;
@@ -42,7 +55,24 @@ export class AuthService {
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/Auth/login`, credentials)
       .pipe(
-        tap(response => {
+        tap((response: AuthResponse) => {
+          this.authSubject.next(response);
+          // Save to localStorage only if available
+          try {
+            if (typeof window !== 'undefined' && window?.localStorage) {
+              localStorage.setItem('auth', JSON.stringify(response));
+            }
+          } catch (e) {
+            console.warn('localStorage not available; skipping saving auth.', e);
+          }
+        })
+      );
+  }
+
+  register(registerData: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/Auth/register`, registerData)
+      .pipe(
+        tap((response: AuthResponse) => {
           this.authSubject.next(response);
           // Save to localStorage only if available
           try {
@@ -77,5 +107,16 @@ export class AuthService {
 
   getToken(): string | null {
     return this.authSubject.value?.token ?? null;
+  }
+
+  setAuth(response: AuthResponse): void {
+    this.authSubject.next(response);
+    try {
+      if (typeof window !== 'undefined' && window?.localStorage) {
+        localStorage.setItem('auth', JSON.stringify(response));
+      }
+    } catch (e) {
+      console.warn('localStorage not available; skipping saving auth.', e);
+    }
   }
 }

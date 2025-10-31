@@ -26,4 +26,8 @@ public class Payment
     public string TransactionStatus { get; set; } = "Pending";
 
     public bool CanBeReviewed { get; set; } = false; // Set to true when payment is "Completed"
+
+    public string? StripePaymentIntentId { get; set; }
+
+    public string? StripeSessionId { get; set; }
 }

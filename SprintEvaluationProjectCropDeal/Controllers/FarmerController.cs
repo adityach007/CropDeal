@@ -69,11 +69,12 @@ public class FarmerController : ControllerBase
         try
         {
             if (id != farmer.FarmerId) return BadRequest("ID mismatch");
-            
-            if (!_authorizationService.CanAccessFarmer(User, id))
-            {
-                return Forbid("You can only modify your own data");
-            }
+
+            var existingFarmer = await _farmerService.GetFarmerByIdAsync(id);
+            if (existingFarmer == null) return NotFound();
+
+            // Preserve password - admin cannot change it
+            farmer.Password = existingFarmer.Password;
 
             var success = await _farmerService.UpdateFarmerAsync(farmer);
             if (!success) return BadRequest("Invalid data");
@@ -115,7 +116,7 @@ public class FarmerController : ControllerBase
         {
             _logger.LogInformation("GetMyProfile called");
             _logger.LogInformation("User Claims: {Claims}", User.Claims.Select(c => $"{c.Type}: {c.Value}"));
-            _logger.LogInformation("User Identity: {Identity}", User.Identity.IsAuthenticated);
+            _logger.LogInformation("User Identity: {Identity}", User.Identity?.IsAuthenticated ?? false);
             _logger.LogInformation("User Roles: {Roles}", User.IsInRole("Farmer"));
 
             var userId = _authorizationService.GetCurrentUserId(User);
@@ -165,6 +166,60 @@ public class FarmerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating farmer profile");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("all-farmers")]
+    [Authorize(Policy = "AdminOrDealer")]
+    public async Task<ActionResult<IEnumerable<Farmer>>> GetAllFarmersForDealer()
+    {
+        try
+        {
+            var farmers = await _farmerService.GetAllFarmersAsync();
+            return Ok(farmers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all farmers");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("public/all-farmers")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IEnumerable<Farmer>>> GetAllFarmersPublic()
+    {
+        try
+        {
+            var farmers = await _farmerService.GetAllFarmersAsync();
+            return Ok(farmers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all farmers");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpPut("verify-farmer-admin/{id}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult> ToggleVerification(int id)
+    {
+        try
+        {
+            var farmer = await _farmerService.GetFarmerByIdAsync(id);
+            if (farmer == null) return NotFound();
+            
+            farmer.IsVerified = !farmer.IsVerified;
+            var success = await _farmerService.UpdateFarmerAsync(farmer);
+            if (!success) return BadRequest("Failed to update verification status");
+            
+            return Ok(new { IsVerified = farmer.IsVerified });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error toggling verification for farmer {Id}", id);
             return StatusCode(500, "Internal server error");
         }
     }

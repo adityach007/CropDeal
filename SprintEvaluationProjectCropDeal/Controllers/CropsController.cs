@@ -43,12 +43,17 @@ public class CropsController : ControllerBase
 
     [HttpPost("crops-details-farmer")]
     [Authorize(Policy = "FarmerOnly")]
-    public async Task<ActionResult> Create(Crops crop)
+    public async Task<ActionResult> Create(Crops crop, [FromServices] IFarmerService farmerService)
     {
         try
         {
             var userId = _authorizationService.GetCurrentUserId(User);
             if (!userId.HasValue) return BadRequest("Invalid token");
+
+            // Check if farmer is active
+            var farmer = await farmerService.GetFarmerByIdAsync(userId.Value);
+            if (farmer == null || !farmer.IsFarmerIdActive)
+                return BadRequest("Your account is inactive. Please contact admin.");
 
             // Ensure farmer can only create crops for themselves
             crop.FarmerId = userId.Value;
@@ -148,6 +153,22 @@ public class CropsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting farmer's crops");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("all-crops")]
+    [Authorize(Policy = "AdminOrDealer")]
+    public async Task<ActionResult<IEnumerable<Crops>>> GetAllCrops()
+    {
+        try
+        {
+            var crops = await _cropsService.GetAllCropsAsync();
+            return Ok(crops);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all crops");
             return StatusCode(500, "Internal server error");
         }
     }

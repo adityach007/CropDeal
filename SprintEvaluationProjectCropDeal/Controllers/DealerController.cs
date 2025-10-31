@@ -15,12 +15,14 @@ public class DealerController : ControllerBase
     private readonly IDealerService _dealerService;
     private readonly ILogger<DealerController> _logger;
     private readonly IAuthService _authorizationService;
+    private readonly ISubscriptionService _subscriptionService;
 
-    public DealerController(IDealerService dealerService, ILogger<DealerController> logger, IAuthService authorizationService)
+    public DealerController(IDealerService dealerService, ILogger<DealerController> logger, IAuthService authorizationService, ISubscriptionService subscriptionService)
     {
         _dealerService = dealerService;
         _logger = logger;
         _authorizationService = authorizationService;
+        _subscriptionService = subscriptionService;
     }
 
     [HttpGet("all-dealers-admin")]
@@ -69,11 +71,12 @@ public class DealerController : ControllerBase
         try
         {
             if (id != dealer.DealerId) return BadRequest("ID mismatch");
-            
-            if (!_authorizationService.CanAccessDealer(User, id))
-            {
-                return Forbid("You can only modify your own data");
-            }
+
+            var existingDealer = await _dealerService.GetDealerByIdAsync(id);
+            if (existingDealer == null) return NotFound();
+
+            // Preserve password - admin cannot change it
+            dealer.Password = existingDealer.Password;
 
             var success = await _dealerService.UpdateDealerAsync(dealer);
             if (!success) return BadRequest("Invalid data");
@@ -162,7 +165,7 @@ public class DealerController : ControllerBase
             var userId = _authorizationService.GetCurrentUserId(User);
             if (!userId.HasValue) return BadRequest("Invalid token");
 
-            var success = await _dealerService.SubscribeToFarmerAsync(userId.Value, request.FarmerId);
+            var success = await _subscriptionService.SubscribeAsync(userId.Value, request.FarmerId);
             
             if (!success)
                 return BadRequest("Already subscribed or farmer not found");
@@ -184,7 +187,7 @@ public class DealerController : ControllerBase
             var userId = _authorizationService.GetCurrentUserId(User);
             if (!userId.HasValue) return BadRequest("Invalid token");
 
-            var success = await _dealerService.UnsubscribeFromFarmerAsync(userId.Value, farmerId);
+            var success = await _subscriptionService.UnsubscribeAsync(userId.Value, farmerId);
             
             if (!success)
                 return BadRequest("Not subscribed to this farmer");
@@ -206,7 +209,7 @@ public class DealerController : ControllerBase
             var userId = _authorizationService.GetCurrentUserId(User);
             if (!userId.HasValue) return BadRequest("Invalid token");
 
-            var subscriptions = await _dealerService.GetSubscribedFarmersAsync(userId.Value);
+            var subscriptions = await _subscriptionService.GetDealerSubscriptionsAsync(userId.Value);
             return Ok(subscriptions);
         }
         catch (Exception ex)
@@ -224,7 +227,7 @@ public class DealerController : ControllerBase
             var userId = _authorizationService.GetCurrentUserId(User);
             if (!userId.HasValue) return BadRequest("Invalid token");
 
-            var isSubscribed = await _dealerService.IsSubscribedToFarmerAsync(userId.Value, farmerId);
+            var isSubscribed = await _subscriptionService.IsSubscribedAsync(userId.Value, farmerId);
             return Ok(new { IsSubscribed = isSubscribed });
         }
         catch (Exception ex)
